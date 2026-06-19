@@ -1,4 +1,5 @@
 import os
+import json
 import streamlit as st
 from dotenv import load_dotenv
 from google import genai
@@ -28,8 +29,11 @@ st.title("🤖 AI Chatbot")
 # Initialize chat history
 # -----------------------------
 if "messages" not in st.session_state:
-    st.session_state.messages = []
-
+    try:
+        with open("chat_history.json", "r") as file:
+            st.session_state.messages = json.load(file)
+    except:
+        st.session_state.messages = []
 # -----------------------------
 # Display previous messages
 # -----------------------------
@@ -89,5 +93,8 @@ if user_prompt:
         }
     )
     
-    
+    with open("chat_history.json", "w") as file:
+        json.dump(st.session_state.messages, file, indent=4)
+ 
+
     #streamlit run app.py
