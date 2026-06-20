@@ -4,51 +4,86 @@ import streamlit as st
 from dotenv import load_dotenv
 from google import genai
 
-# -----------------------------
-# Load environment variables
-# -----------------------------
+# ---------------------------------
+# Streamlit Page Configuration
+# ---------------------------------
+st.set_page_config(
+    page_title="AI Chatbot",
+    page_icon="🤖",
+    layout="centered"
+)
+
+# ---------------------------------
+# Load Environment Variables
+# ---------------------------------
 load_dotenv()
 
 api_key = os.getenv("GEMINI_API_KEY")
 
 if not api_key:
-    st.error("GEMINI_API_KEY not found in .env file")
+    st.error("❌ GEMINI_API_KEY not found in your .env file.")
     st.stop()
 
-# -----------------------------
-# Create Gemini client
-# -----------------------------
+# ---------------------------------
+# Create Gemini Client
+# ---------------------------------
 client = genai.Client(api_key=api_key)
 
-# -----------------------------
-# Streamlit page title
-# -----------------------------
-st.title("🤖 AI Chatbot")
-
-# -----------------------------
-# Initialize chat history
-# -----------------------------
+# ---------------------------------
+# Initialize Chat History
+# ---------------------------------
 if "messages" not in st.session_state:
     try:
         with open("chat_history.json", "r") as file:
             st.session_state.messages = json.load(file)
-    except:
+    except (FileNotFoundError, json.JSONDecodeError):
         st.session_state.messages = []
-# -----------------------------
-# Display previous messages
-# -----------------------------
+
+# ---------------------------------
+# Sidebar
+# ---------------------------------
+with st.sidebar:
+    st.title("🤖 AI Chatbot")
+    st.write("Built by Sudeep")
+
+    st.markdown("---")
+
+    st.info(
+        "This chatbot uses Google Gemini and "
+        "stores conversation history locally."
+    )
+
+    st.markdown("---")
+
+    if st.button("🗑️ Clear Chat"):
+        st.session_state.messages = []
+
+        with open("chat_history.json", "w") as file:
+            json.dump([], file)
+
+        st.rerun()
+
+# ---------------------------------
+# Main Page
+# ---------------------------------
+st.title("🤖 AI Chatbot")
+st.caption("Powered by Gemini • Built with Streamlit")
+
+# ---------------------------------
+# Display Previous Messages
+# ---------------------------------
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# -----------------------------
-# Chat input
-# -----------------------------
+# ---------------------------------
+# Chat Input
+# ---------------------------------
 user_prompt = st.chat_input("Type your message...")
 
 if user_prompt:
 
-    # Show user message immediately
+    # Display user message
     with st.chat_message("user"):
         st.markdown(user_prompt)
 
@@ -69,19 +104,20 @@ if user_prompt:
 
     conversation_history += "Assistant:"
 
+    # Generate response
     try:
-        # Generate response from Gemini
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=conversation_history,
-        )
+        with st.spinner("🤔 Gemini is thinking..."):
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=conversation_history,
+            )
 
-        assistant_reply = response.text
+            assistant_reply = response.text
 
     except Exception as e:
         assistant_reply = f"⚠️ Error: {e}"
 
-    # Show assistant response
+    # Display assistant response
     with st.chat_message("assistant"):
         st.markdown(assistant_reply)
 
@@ -92,9 +128,9 @@ if user_prompt:
             "content": assistant_reply
         }
     )
-    
+
+    # Save chat history to file
     with open("chat_history.json", "w") as file:
         json.dump(st.session_state.messages, file, indent=4)
- 
 
     #streamlit run app.py
