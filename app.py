@@ -106,31 +106,37 @@ if user_prompt:
 
     # Generate response
     try:
-        with st.spinner("🤔 Gemini is thinking..."):
-            response = client.models.generate_content(
-                model="gemini-2.5-flash",
-                contents=conversation_history,
-            )
+        assistant_reply = ""
 
-            assistant_reply = response.text
+        with st.chat_message("assistant"):
+           placeholder = st.empty()
+
+        for chunk in client.models.generate_content_stream(
+        model="gemini-2.5-flash",
+        contents=conversation_history,
+      ):
+            if chunk.text:
+               assistant_reply += chunk.text
+               placeholder.markdown(assistant_reply + "▌")
+
+        placeholder.markdown(assistant_reply)
 
     except Exception as e:
         assistant_reply = f"⚠️ Error: {e}"
 
     # Display assistant response
-    with st.chat_message("assistant"):
-        st.markdown(assistant_reply)
+    #with st.chat_message("assistant"):
+        #st.markdown(assistant_reply)
 
     # Save assistant response
     st.session_state.messages.append(
-        {
-            "role": "assistant",
-            "content": assistant_reply
-        }
-    )
+    {
+        "role": "assistant",
+        "content": assistant_reply
+    }
+)
 
-    # Save chat history to file
-    with open("chat_history.json", "w") as file:
-        json.dump(st.session_state.messages, file, indent=4)
+with open("chat_history.json", "w") as file:
+    json.dump(st.session_state.messages, file, indent=4)
 
     #streamlit run app.py
