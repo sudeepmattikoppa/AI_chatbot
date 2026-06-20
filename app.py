@@ -29,6 +29,17 @@ if not api_key:
 # ---------------------------------
 client = genai.Client(api_key=api_key)
 
+
+SYSTEM_PROMPT = """
+You are an expert AI assistant.
+
+Rules:
+- Give clear and beginner-friendly explanations.
+- Use examples whenever possible.
+- Format answers using Markdown.
+- If asked for code, provide clean and well-commented code.
+- Be concise but informative.
+"""
 # ---------------------------------
 # Initialize Chat History
 # ---------------------------------
@@ -96,7 +107,7 @@ if user_prompt:
     )
 
     # Build conversation history
-    conversation_history = ""
+    conversation_history = SYSTEM_PROMPT + "\n\n"
 
     for message in st.session_state.messages:
         role = message["role"].capitalize()
