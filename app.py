@@ -164,9 +164,9 @@ if user_prompt:
 
     conversation_history += "Assistant:"
 
-    # ---------------------------------
+    # -------------------------------
     # Generate streaming response
-    # ---------------------------------
+    # -------------------------------
 
     assistant_reply = ""
 
