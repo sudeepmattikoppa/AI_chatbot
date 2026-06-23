@@ -183,9 +183,9 @@ for msg in st.session_state.messages:
         )
 conversation_history += "Assistant:"
 
-    # ---------------------------------
+    # -------------------------------
     # Generate streaming response
-    # ---------------------------------
+    # -------------------------------
 
 assistant_reply = ""
 
