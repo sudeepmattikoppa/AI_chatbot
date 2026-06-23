@@ -58,30 +58,27 @@ if "messages" not in st.session_state:
 # Sidebar
 # ---------------------------------
 with st.sidebar:
-
     st.title("🤖 AI Chatbot")
     st.write("Built by Sudeep")
 
     st.markdown("---")
 
     st.info(
-        "This chatbot uses Google Gemini and stores conversation history locally."
+        "This chatbot uses Google Gemini and "
+        "stores conversation history locally."
     )
 
     st.markdown("---")
 
     if st.button("🗑️ Clear Chat"):
-
         st.session_state.messages = []
-
-        if "pdf_text" in st.session_state:
-            del st.session_state["pdf_text"]
-
         with open("chat_history.json", "w") as file:
             json.dump([], file)
-
         st.rerun()
 
+    st.markdown("---")
+
+    # ✅ Upload stays in the sidebar
     uploaded_file = st.file_uploader(
         "📄 Upload a PDF",
         type=["pdf"],
@@ -89,22 +86,33 @@ with st.sidebar:
     )
 
     if uploaded_file is not None:
+        pdf_text = extract_pdf_text(uploaded_file)
+        chunks = split_text(pdf_text)
+        vector_db = create_vector_store(chunks)
 
-        pdf_reader = PdfReader(uploaded_file)
+        st.session_state.vector_db = vector_db
+        st.success("✅ PDF processed successfully!")
+from rag.pdf_loader import extract_pdf_text
+from rag.splitter import split_text
+from rag.vector_store import create_vector_store
 
-        pdf_text = ""
 
-        for page in pdf_reader.pages:
-            text = page.extract_text()
 
-            if text:
-                pdf_text += text + "\n"
+if uploaded_file is not None:
 
-        # IMPORTANT: Save PDF text
-        st.session_state.pdf_text = pdf_text
+    # Extract text
+    pdf_text = extract_pdf_text(uploaded_file)
 
-        st.success("✅ PDF uploaded successfully!")
+    # Split into chunks
+    chunks = split_text(pdf_text)
 
+    # Build FAISS vector database
+    vector_db = create_vector_store(chunks)
+
+    # Store it in session state
+    st.session_state.vector_db = vector_db
+
+    st.success("✅ PDF processed and indexed successfully!")
 # ---------------------------------
 # Main Page
 # ---------------------------------
@@ -144,35 +152,46 @@ if user_prompt:
     conversation_history = SYSTEM_PROMPT + "\n\n"
 
     # Inject PDF if uploaded
-    if "pdf_text" in st.session_state:
+from rag.retrieval import retrieve_context
 
-        conversation_history += (
-            "The user uploaded the following PDF.\n"
-            "Use it as the primary source when answering.\n\n"
-        )
+retrieved_context = ""
 
-        conversation_history += st.session_state.pdf_text + "\n\n"
+if "vector_db" in st.session_state:
+    retrieved_context = retrieve_context(
+        st.session_state.vector_db,
+        user_prompt
+    )
 
+conversation_history = f"""
+{SYSTEM_PROMPT}
+
+Relevant information from the uploaded PDF:
+
+{retrieved_context}
+
+User: {user_prompt}
+
+Assistant:
+"""
     # Add previous messages
-    for msg in st.session_state.messages:
+for msg in st.session_state.messages:
 
         role = msg["role"].capitalize()
 
         conversation_history += (
             f"{role}: {msg['content']}\n"
         )
-
-    conversation_history += "Assistant:"
+conversation_history += "Assistant:"
 
     # ---------------------------------
     # Generate streaming response
     # ---------------------------------
 
-    assistant_reply = ""
+assistant_reply = ""
 
-    try:
+try:
 
-        with st.chat_message("assistant"):
+     with st.chat_message("assistant"):
 
             placeholder = st.empty()
 
@@ -187,7 +206,7 @@ if user_prompt:
 
             placeholder.markdown(assistant_reply)
 
-    except Exception as e:
+except Exception as e:
 
         assistant_reply = f"⚠️ {e}"
 
@@ -195,7 +214,7 @@ if user_prompt:
             st.markdown(assistant_reply)
 
     # Save assistant message
-    st.session_state.messages.append(
+st.session_state.messages.append(
         {
             "role": "assistant",
             "content": assistant_reply
@@ -203,7 +222,7 @@ if user_prompt:
     )
 
     # Save chat locally
-    with open("chat_history.json", "w") as file:
+with open("chat_history.json", "w") as file:
         json.dump(
             st.session_state.messages,
             file,
